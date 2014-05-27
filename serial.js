@@ -37,7 +37,6 @@ module.exports = function(com,readycb){
     var series = [
       function(){
         out._scommand('hq.gettoken',function(err,data){
-          console.log('get token>!',err,data)
           if(err) return out.emit('error',new Error('error getting token. '+err));
           out.token = data; 
           done();
@@ -46,7 +45,6 @@ module.exports = function(com,readycb){
       function(){
         out._scommand('mesh.report',function(err,data){ 
           if(err) return out.emit('error',new Error('error getting mesh config. '+err));
-          console.log('MESH!',data);
           out.mesh = json(data);
           done();
         });
@@ -76,8 +74,8 @@ module.exports = function(com,readycb){
 
     done();
 
+    // all serial output
     scoutScript.on('log',function(data){
-      //console.log('[log]',data+'');
       parser.write(data);
     });
 
@@ -85,7 +83,6 @@ module.exports = function(com,readycb){
 
   // from board
   var handle = function(data){
-    console.log('data out of dongle',data);
     var scout;
     //{"type":"mesh","scoutid":2,"troopid":2,"routes":0,"channel":20,"rate":"250 kb/s","power":"3.5 dBm"}
     if(out.mesh) {
@@ -108,7 +105,7 @@ module.exports = function(com,readycb){
   out = through(function(data){
     if(!data) return;
     // command stream to board
-    console.log('BRIDGE> ',data);
+    //console.log('BRIDGE> ',data);
     if(data.type == 'command') {
       if(!data.to || !data.command){
         return console.log('INVALID BRIDGE COMMAND!',data);
@@ -123,10 +120,11 @@ module.exports = function(com,readycb){
         data.reply = res != undefined?res:err+'';
         data.from = data.to;
         data.basetime = Date.now()-t;
+        data.end = true;
         delete data.to;
 
 
-        console.log('COMMAND REPLY!',data);
+        //console.log('COMMAND REPLY!',data);
 
         // send replies back.
         out.queue(data);
@@ -157,7 +155,6 @@ module.exports = function(com,readycb){
   }
 
   out._scommand = function(command,cb){
-    console.log('SCOMMAND',command);
     command = command.trim(); 
     var attempts = 0
     , z = this
@@ -175,14 +172,11 @@ module.exports = function(com,readycb){
           var lines = data.split("\r\n");
           reply = [];
           for(var i =0;i<lines.length;++i){
-            if(lines[i].indexOf('mesh announcing to') === 0) break;
+            if(lines[i].indexOf('mesh announcing to') === 0) continue;
             reply.push(lines[i]);
           }         
           reply = reply.join("\r\n");
 
-          // keep adding data till the next
-
-          console.log('REPLY>',reply,orig);
         }
         if(cb) cb(err,reply);
       }) 
