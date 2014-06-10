@@ -50,6 +50,16 @@ module.exports = function(com,readycb){
         });
       },
       function(){
+        out._scommand("z=0; while(z < 200) { key.print(z); z = z+1; }",function(err,data){ 
+          if(err) return out.emit('error',new Error('error getting mesh config. '+err));
+
+          // add keys pulled directly from the bridge scout.
+          parser.keys = data.trim().split("\r\n");
+
+          done();
+        });
+      },
+      function(){
         //var startup = "function startup.dongle {"
         //  +"verbose(1);"
         //  +"mesh.joingroup"

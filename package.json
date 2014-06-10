@@ -1,9 +1,9 @@
 {
-  "name": "pinoccio-dongle",
+  "name": "pinoccio-bridge",
   "description": "use a field scout with pinoccio hq over serial",
   "version": "0.0.0",
   "repository": {
-    "url": "git://github.com/soldair/pinoccio-dongle.git"
+    "url": "git://github.com/soldair/pinoccio-bridge.git"
   },
   "main": "index.js",
   "scripts": {
