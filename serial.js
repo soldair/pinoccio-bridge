@@ -33,21 +33,21 @@ module.exports = function(com,readycb){
 
     var series = [
       function(){
-        out._scommand('hq.gettoken',function(err,data){
+        out.bridgeCommand('hq.gettoken',function(err,data){
           if(err) return out.emit('error',new Error('error getting token. '+err));
           out.token = data; 
           done();
         });
       },
       function(){
-        out._scommand('mesh.report',function(err,data){ 
+        out.bridgeCommand('mesh.report',function(err,data){ 
           if(err) return out.emit('error',new Error('error getting mesh config. '+err));
           out.mesh = json(data);
           done();
         });
       },
       function(){
-        out._scommand("z=0; while(z < 200) { key.print(z); z = z+1; }",function(err,data){ 
+        out.bridgeCommand("z=0; while(z < 200) { key.print(z); z = z+1; }",function(err,data){ 
           if(err) return out.emit('error',new Error('error getting mesh config. '+err));
 
           // add keys pulled directly from the bridge scout.
@@ -57,14 +57,14 @@ module.exports = function(com,readycb){
         });
       },
       function(){
-        out._scommand('hq.bridge(1)',function(err,data){ 
+        out.bridgeCommand('hq.bridge(1)',function(err,data){ 
           if(err) return out.emit('error',new Error('error getting mesh config. '+err));
           if(data !== "on") return out.emit('error',new Error('scout requires the hq.bridge command please update firmware.'));
           done();
         });
       },
       function(){
-        out._scommand('report;',done)
+        out.bridgeCommand('report;',done)
       }
     ], done = function(err){
       if(err) return out.emit('error',err);
@@ -179,7 +179,7 @@ module.exports = function(com,readycb){
 
   // just expose command because you probably want to run commands from everywhere
   out.command = function(scout,command,cb){    
-    if(out.mesh && out.mesh.scoutid == scout) return out._scommand(command,cb);
+    if(out.mesh && out.mesh.scoutid == scout) return out.bridgeCommand(command,cb);
   
     var id = ++_id;
     replyCbs[id] = cb;
@@ -192,7 +192,7 @@ module.exports = function(com,readycb){
       }
     },10000);
 
-    out._scommand("hq.bridge.command("+JSON.stringify(command+'')+","+scout+","+id+");",function(err,data){
+    out.bridgeCommand("hq.bridge.command("+JSON.stringify(command+'')+","+scout+","+id+");",function(err,data){
       if(err) {
         var cb = replyCbs[id];
         if(!cb)  return;
@@ -202,7 +202,7 @@ module.exports = function(com,readycb){
     });
   }
 
-  out._scommand = function(command,cb){
+  out.bridgeCommand = function(command,cb){
     command = command.trim(); 
     var attempts = 0
     , z = this
