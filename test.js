@@ -3,9 +3,11 @@ var dongle = require('./');
 
 dongle('/dev/ttyACM0',{host:'localhost'},function(err,d){
 
-  console.log('dongle online');
+  console.log('bridge online');
 
-  console.log(err);
+  console.error(err);
+  if(!d) throw new Error("could not connect to scout for some reason. is a serial monitor open?")
+  
 
   var ss = d.scoutScript;
 
@@ -13,7 +15,7 @@ dongle('/dev/ttyACM0',{host:'localhost'},function(err,d){
   setImmediate(function(){
     d._scommand('led.blue;',function(err,data){
       if(err) throw err;
-      console.log('DONGLE SCOUT READY!')
+      console.log('BRIDGE SCOUT READY!');
     })
   });
 });
