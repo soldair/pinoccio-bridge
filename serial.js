@@ -1,6 +1,6 @@
 
 var through = require('through');
-var serial = require('pinoccio/lib/serial')();
+var serial = require('pinoccio-serial')();
 var outputParser = require('./lib/verbose-parser');
 var json = require('./lib/json');
 var version = require('./package.json').version;
@@ -197,19 +197,9 @@ module.exports = function(com,readycb){
         var cb = replyCbs[id];
         if(!cb)  return;
         delete replyCbs[id];
-
         cb(false,{type:"reply",id:id,err:err+'',from:scout})
       }
-
-      // ok command sent!
-      // look for invalid number.
-      console.log('>>>>> sent command to scout i hope. ',data); 
     });
-
-    // needs to support running on other scouts in troop!
-    //setImmediate(function(){
-    //  cb('dongle cant message other scouts over mesh yet');
-    //});
   }
 
   out._scommand = function(command,cb){

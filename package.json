@@ -11,8 +11,8 @@
   },
   "author": "Ryan Day",
   "dependencies": {
-    "pinoccio-server": "0.0.0",
-    "pinoccio": "~0.1.4",
+    "pinoccio-server": "~0.0.0",
+    "pinoccio-serial": "~0.0.0",
     "through": "~2.3.4",
     "split": "~0.3.0"
   },
