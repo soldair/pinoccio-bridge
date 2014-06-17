@@ -153,11 +153,26 @@ module.exports = function(com,readycb){
 
   out._handleReply = function(reply){
 
-    console.log('-------------HANDLE REPLY!-----------');
+    console.log('-------------HANDLE REPLY chunk!-----------');
     console.log(reply);
 
     if(!replyCbs[reply.id]) return;
     var cb = replyCbs[reply.id];
+
+    if(!cb.reply) cb.reply = [];
+    cb.reply.push(reply.reply);
+
+    // im really done!
+    if(reply.err || reply.end){
+
+      console.log('------------- REPLY complete !-----------');
+      reply.reply = cb.reply.join('');
+    } else {
+
+      return;
+    }
+
+
     delete replyCbs[reply.id];
     clearTimeout(cb.timer);
     
