@@ -153,9 +153,6 @@ module.exports = function(com,readycb){
 
   out._handleReply = function(reply){
 
-    console.log('-------------HANDLE REPLY chunk!-----------');
-    console.log(reply);
-
     if(!replyCbs[reply.id]) return;
     var cb = replyCbs[reply.id];
 
@@ -165,13 +162,11 @@ module.exports = function(com,readycb){
     // im really done!
     if(reply.err || reply.end){
 
-      console.log('------------- REPLY complete !-----------');
       reply.reply = cb.reply.join('');
     } else {
 
       return;
     }
-
 
     delete replyCbs[reply.id];
     clearTimeout(cb.timer);
@@ -179,9 +174,7 @@ module.exports = function(com,readycb){
     // TODO err,data from reply
     cb(reply.err?reply.reply:false,reply.reply);
 
-    //--------------- re map ids
     out.queue(reply); 
-    
   }
 
   // just expose command because you probably want to run commands from everywhere
@@ -237,7 +230,7 @@ module.exports = function(com,readycb){
           var lines = data.split("\r\n");
           reply = [];
           for(var i =0;i<lines.length;++i){
-            if(lines[i].indexOf('mesh announcing to') === 0) continue;
+            if(lines[i].indexOf('[hq-bridge]') === 0) continue;
             reply.push(lines[i]);
           }         
           reply = reply.join("\r\n");
