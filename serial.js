@@ -5,7 +5,6 @@ var outputParser = require('./lib/verbose-parser');
 var json = require('./lib/json');
 var version = require('./package.json').version;
 
-
 module.exports = function(com,readycb){
   if(typeof options == 'function'){
     readycb = options;
@@ -24,13 +23,11 @@ module.exports = function(com,readycb){
     // send out to event stream
     handle(data);
     // send to bridge.. the bridge can be moved out of this file.
-    // must send token first! TODO.
   });
 
   serial.connect(com,function(err,scoutScript){
     if(err) return out.emit('error');
     
-
     out.ready = true;
     out.scoutScript = scoutScript;
 
@@ -60,15 +57,14 @@ module.exports = function(com,readycb){
         });
       },
       function(){
-        //var startup = "function startup.dongle {"
-        //  +"verbose(1);"
-        //  +"mesh.joingroup"
-        //+"}";
-        //  +"function on.message.group{"
-        //    +"group,from,keys"
-        //+"};"
-        //+""
-        out._scommand('hq.verbose(1);report;',done)
+        out._scommand('hq.bridge(1)',function(err,data){ 
+          if(err) return out.emit('error',new Error('error getting mesh config. '+err));
+          if(data !== "on") return out.emit('error',new Error('scout requires the hq.bridge command please update firmware.'));
+          done();
+        });
+      },
+      function(){
+        out._scommand('report;',done)
       }
     ], done = function(err){
       if(err) return out.emit('error',err);
@@ -93,6 +89,7 @@ module.exports = function(com,readycb){
 
   // from board
   var handle = function(data){
+    console.log(data);
     var scout;
     //{"type":"mesh","scoutid":2,"troopid":2,"routes":0,"channel":20,"rate":"250 kb/s","power":"3.5 dBm"}
     if(out.mesh) {
@@ -107,8 +104,8 @@ module.exports = function(com,readycb){
     // add scout id and wrap with type report!
     // make sure its a report!
     // TODO support announce.
-
-    out.queue({type:"report",report:data,from:out.mesh.scoutid});
+    if(data.type == 'reply') return out._handleReply(data);
+    out.queue(data);
 
   }
 
@@ -132,10 +129,7 @@ module.exports = function(com,readycb){
         data.basetime = Date.now()-t;
         data.end = true;
         delete data.to;
-
-
-        //console.log('COMMAND REPLY!',data);
-
+        console.log('<<<< reply back to hq',data);
         // send replies back.
         out.queue(data);
       });
@@ -153,15 +147,61 @@ module.exports = function(com,readycb){
 
   out.ready = false;
 
+  
+  var _id = 0;
+  var replyCbs = {};
+
+  out._handleReply = function(reply){
+
+    console.log('-------------HANDLE REPLY!-----------');
+    console.log(reply);
+
+    if(!replyCbs[reply.id]) return;
+    var cb = replyCbs[reply.id];
+    delete replyCbs[reply.id];
+    clearTimeout(cb.timer);
+    
+    // TODO err,data from reply
+    cb(reply.err?reply.reply:false,reply.reply);
+
+    //--------------- re map ids
+    out.queue(reply); 
+    
+  }
 
   // just expose command because you probably want to run commands from everywhere
   out.command = function(scout,command,cb){    
     if(out.mesh && out.mesh.scoutid == scout) return out._scommand(command,cb);
+  
+    var id = ++_id;
+    replyCbs[id] = cb;
+    var timeout = 10000;
+    cb.timer = setTimeout(function(){
+      var cb = replyCbs[id];
+      if(cb) {
+        delete replyCbs[id];
+        cb(false,{type:"reply",err:"base timeout in "+timeout+" ms",from:scout});
+      }
+    },10000);
+
+    out._scommand("hq.bridge.command("+JSON.stringify(command+'')+","+scout+","+id+");",function(err,data){
+      if(err) {
+        var cb = replyCbs[id];
+        if(!cb)  return;
+        delete replyCbs[id];
+
+        cb(false,{type:"reply",id:id,err:err+'',from:scout})
+      }
+
+      // ok command sent!
+      // look for invalid number.
+      console.log('>>>>> sent command to scout i hope. ',data); 
+    });
 
     // needs to support running on other scouts in troop!
-    setImmediate(function(){
-      cb('dongle cant message other scouts over mesh yet');
-    });
+    //setImmediate(function(){
+    //  cb('dongle cant message other scouts over mesh yet');
+    //});
   }
 
   out._scommand = function(command,cb){

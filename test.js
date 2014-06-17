@@ -1,7 +1,7 @@
 var dongle = require('./');
 
 
-dongle('/dev/ttyACM1',{host:'localhost'},function(err,d){
+dongle('/dev/ttyACM0',{host:'localhost'},function(err,d){
 
   console.log('dongle online');
 
