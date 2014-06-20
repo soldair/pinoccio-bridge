@@ -89,7 +89,8 @@ module.exports = function(com,readycb){
 
   // from board
   var handle = function(data){
-    console.log(data);
+    //console.log(data);
+    out.emit('log',data);
     var scout;
     //{"type":"mesh","scoutid":2,"troopid":2,"routes":0,"channel":20,"rate":"250 kb/s","power":"3.5 dBm"}
     if(out.mesh) {
@@ -98,7 +99,7 @@ module.exports = function(com,readycb){
 
     if(out.token && !out.sentToken){
       out.sentToken = true;
-      out.queue({type:"token",token:out.token,dongle:version,scout:scout});
+      out.queue({type:"token",token:out.token,bridge:version,scout:scout});
     }
 
     // add scout id and wrap with type report!
@@ -129,7 +130,7 @@ module.exports = function(com,readycb){
         data.basetime = Date.now()-t;
         data.end = true;
         delete data.to;
-        console.log('<<<< reply back to hq',data);
+        //console.log('<<<< reply back to hq',data);
         // send replies back.
         out.queue(data);
       });
