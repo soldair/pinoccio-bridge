@@ -12,6 +12,8 @@ bridge('/dev/ttyACM0',{host:'localhost'},function(err,d){
     if(err) throw err;
     console.log('BRIDGE SCOUT READY!');
   })
+}).on('data',function(data){
+  console.log('event stream>',data);
 });
 
 
