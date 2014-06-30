@@ -33,38 +33,13 @@ module.exports = function(com,readycb){
 
     var series = [
       function(){
-        out.bridgeCommand('hq.gettoken',function(err,data){
-          if(err) return out.emit('error',new Error('error getting token. '+err));
-          out.token = data; 
-          done();
-        });
-      },
-      function(){
-        out.bridgeCommand('mesh.report',function(err,data){ 
+        out.bridgeCommand('hq.bridge();',function(err,data){ 
           if(err) return out.emit('error',new Error('error getting mesh config. '+err));
-          out.mesh = json(data);
+          if(data && data.indexOf('unexpected number') > -1) {
+            return out.emit('error',new Error('scout requires the hq.bridge command please update firmware.'));
+          }
           done();
         });
-      },
-      function(){
-        out.bridgeCommand("z=0; while(z < 200) { key.print(z); z = z+1; }",function(err,data){ 
-          if(err) return out.emit('error',new Error('error getting mesh config. '+err));
-
-          // add keys pulled directly from the bridge scout.
-          parser.keys = data.trim().split("\r\n");
-
-          done();
-        });
-      },
-      function(){
-        out.bridgeCommand('hq.bridge(1)',function(err,data){ 
-          if(err) return out.emit('error',new Error('error getting mesh config. '+err));
-          if(data !== "on") return out.emit('error',new Error('scout requires the hq.bridge command please update firmware.'));
-          done();
-        });
-      },
-      function(){
-        out.bridgeCommand('report;',done)
       }
     ], done = function(err){
       if(err) return out.emit('error',err);
@@ -97,7 +72,16 @@ module.exports = function(com,readycb){
       scout = out.mesh.scoutid;
     }
 
-    if(out.token && !out.sentToken){
+    
+    if(data.type == "token"){
+
+    }
+
+    // i may make many connections to the bridge
+    if(data.type != "token" && out.token && !out.sentToken){
+      if(data.type == 'token') {
+        out.token = data.token;
+      }
       out.sentToken = true;
       out.queue({type:"token",token:out.token,bridge:version,scout:scout});
     }
@@ -113,7 +97,6 @@ module.exports = function(com,readycb){
   out = through(function(data){
     if(!data) return;
     // command stream to board
-    //console.log('BRIDGE> ',data);
     if(data.type == 'command') {
       if(!data.to || !data.command){
         return console.log('INVALID BRIDGE COMMAND!',data);
@@ -193,7 +176,10 @@ module.exports = function(com,readycb){
       }
     },10000);
 
-    out.bridgeCommand("hq.bridge.command("+JSON.stringify(command+'')+","+scout+","+id+");",function(err,data){
+    command = {id:id,type:"command",to:scout,command:command};
+    command = "hq.bridge("+JSON.stringify(JSON.stringify(command)+"\n")+");";
+
+    out.bridgeCommand(command,function(err,data){
       if(err) {
         var cb = replyCbs[id];
         if(!cb)  return;
