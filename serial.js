@@ -5,6 +5,7 @@ var outputParser = require('./lib/verbose-parser');
 var json = require('./lib/json');
 var version = require('./package.json').version;
 
+
 module.exports = function(com,readycb){
   if(typeof options == 'function'){
     readycb = options;
@@ -19,7 +20,14 @@ module.exports = function(com,readycb){
   var out;
   var parser = outputParser();
 
+  parser.on('reboot',function(){
+    activateBridge(function(err){
+      if(err) console.log('failed to reactivate bridge');
+    })
+  })
+
   parser.on('data',function(data){
+
     // send out to event stream
     handle(data);
     // send to bridge.. the bridge can be moved out of this file.
@@ -31,29 +39,14 @@ module.exports = function(com,readycb){
     out.ready = true;
     out.scoutScript = scoutScript;
 
-    var series = [
-      function(){
-        out.bridgeCommand('hq.bridge();',function(err,data){ 
-          if(err) return out.emit('error',new Error('error getting mesh config. '+err));
-          if(data && data.indexOf('unexpected number') > -1) {
-            return out.emit('error',new Error('scout requires the hq.bridge command please update firmware.'));
-          }
-          done();
-        });
-      }
-    ], done = function(err){
+    activateBridge(function(err){
       if(err) return out.emit('error',err);
-      var next = series.shift();
-      if(next) {
-        return next();
-      }
 
       out.emit('ready',scoutScript);
       readycb(false,out);
       readycb = noop;
-    };
+    });
 
-    done();
 
     // all serial output
     scoutScript.on('log',function(data){
@@ -62,10 +55,21 @@ module.exports = function(com,readycb){
 
   });
 
+  function activateBridge(cb){
+    out.bridgeCommand('hq.bridge();',function(err,data){ 
+      if(err) return out.emit('error',new Error('error getting mesh config. '+err));
+      if(data && data.indexOf('unexpected number') > -1) {
+        return out.emit('error',new Error('scout requires the hq.bridge command please update firmware.'));
+      }
+      
+      cb(err,data);
+    });
+  }
+
+
   // from board
   var handle = function(data){
     //console.log(data);
-    out.emit('log',data);
     var scout;
     //{"type":"mesh","scoutid":2,"troopid":2,"routes":0,"channel":20,"rate":"250 kb/s","power":"3.5 dBm"}
     if(out.mesh) {
@@ -75,16 +79,16 @@ module.exports = function(com,readycb){
     
     if(data.type == "token"){
 
+      out.token = data.token;
+      data['pinoccio-bridge'] = version+'';
+
+      out.sentToken = true;
+
+    } else if(out.token && !out.sentToken){
+      out.sentToken = true;
+      out.queue({type:"token",token:out.token,_v:version,bridge:version,scout:scout});
     }
 
-    // i may make many connections to the bridge
-    if(data.type != "token" && out.token && !out.sentToken){
-      if(data.type == 'token') {
-        out.token = data.token;
-      }
-      out.sentToken = true;
-      out.queue({type:"token",token:out.token,bridge:version,scout:scout});
-    }
 
     // add scout id and wrap with type report!
     // make sure its a report!
@@ -113,7 +117,6 @@ module.exports = function(com,readycb){
         data.basetime = Date.now()-t;
         data.end = true;
         delete data.to;
-        //console.log('<<<< reply back to hq',data);
         // send replies back.
         out.queue(data);
       });
@@ -222,6 +225,7 @@ module.exports = function(com,readycb){
   out.close = function(){
     
   }
+
 
   return out;
 }
