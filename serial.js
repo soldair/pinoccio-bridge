@@ -27,9 +27,8 @@ module.exports = function(com,readycb){
   })
 
   parser.on('data',function(data){
-
     // send out to event stream
-    handle(data);
+    if(data) handle(data);
     // send to bridge.. the bridge can be moved out of this file.
   });
 
@@ -50,6 +49,7 @@ module.exports = function(com,readycb){
 
     // all serial output
     scoutScript.on('log',function(data){
+//      console.log("READ",data.toString());
       parser.write(data);
     });
 
