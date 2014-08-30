@@ -18,23 +18,37 @@ module.exports = function(com,readycb){
   }
 
   var out;
+  var closed;
   var parser = outputParser();
 
   parser.on('reboot',function(){
-    activateBridge(function(err){
-      if(err) console.log('failed to reactivate bridge');
-    })
+    if(out.activated){
+      activateBridge(function(err){
+        if(err) console.log('failed to reactivate bridge');
+      })
+    }
   })
 
   parser.on('data',function(data){
-
+    //console.log('%%% PARSER DATA '+data);
     // send out to event stream
     handle(data);
     // send to bridge.. the bridge can be moved out of this file.
   });
+ 
+  serial.connect(com,handleConnection);
 
-  serial.connect(com,function(err,scoutScript){
+  function handleConnection (err,scoutScript){
     if(err) return out.emit('error');
+
+    scoutScript.on("error",function(err){
+      // something bad happened to serial.
+      console.log("something bad happened to the serial connection. =(");
+      console.log(err);
+
+      out.emit('error',err);
+
+    });
     
     out.ready = true;
     out.scoutScript = scoutScript;
@@ -42,6 +56,7 @@ module.exports = function(com,readycb){
     activateBridge(function(err){
       if(err) return out.emit('error',err);
 
+      out.activated = true;
       out.emit('ready',scoutScript);
       readycb(false,out);
       readycb = noop;
@@ -50,14 +65,17 @@ module.exports = function(com,readycb){
 
     // all serial output
     scoutScript.on('log',function(data){
+      //console.log('sending log data to verbose parser!!'+data);
       parser.write(data);
     });
 
-  });
+  }
+
 
   function activateBridge(cb){
+
     out.bridgeCommand('hq.bridge();',function(err,data){ 
-      if(err) return out.emit('error',new Error('error getting mesh config. '+err));
+      if(err) return out.emit('error',new Error('error starting bridge. '+err));
       if(data && data.indexOf('unexpected number') > -1) {
         return out.emit('error',new Error('scout requires the hq.bridge command please update firmware.'));
       }
@@ -68,8 +86,9 @@ module.exports = function(com,readycb){
 
 
   // from board
+
   var handle = function(data){
-    //console.log(data);
+
     var scout;
     //{"type":"mesh","scoutid":2,"troopid":2,"routes":0,"channel":20,"rate":"250 kb/s","power":"3.5 dBm"}
     if(out.mesh) {
@@ -77,7 +96,7 @@ module.exports = function(com,readycb){
     }
 
     
-    if(data.type == "token"){
+    if(data && data.type == "token"){
 
       out.token = data.token;
       data['pinoccio-bridge'] = version+'';
@@ -92,22 +111,28 @@ module.exports = function(com,readycb){
 
     // add scout id and wrap with type report!
     // make sure its a report!
-    // TODO support announce.
-    if(data.type == 'reply') return out._handleReply(data);
-    out.queue(data);
+    if(data) {
+      if(data.type == 'reply') return out._handleReply(data);
+      out.queue(data);
+    }
 
   }
 
   out = through(function(data){
+
     if(!data) return;
     // command stream to board
     if(data.type == 'command') {
       if(!data.to || !data.command){
-        return console.log('INVALID BRIDGE COMMAND!',data);
+        //return console.log('INVALID BRIDGE COMMAND!',data);
       }
 
       // support external data.timeout
       var t = Date.now();
+
+
+      //console.log('sending command')
+
       out.command(data.to,data.command,function(err,res){
         //data.
         data.type = "reply";
@@ -123,7 +148,7 @@ module.exports = function(com,readycb){
     } else if(data.type == 'online') {
       // noop.
     } else {
-      console.log('UNKNOWN bridge command!',  data);
+      //console.log('UNKNOWN bridge command!',  data);
     }
 
   });
@@ -139,6 +164,8 @@ module.exports = function(com,readycb){
   var replyCbs = {};
 
   out._handleReply = function(reply){
+
+    //console.log('_handleReply',reply);
 
     if(!replyCbs[reply.id]) return;
     var cb = replyCbs[reply.id];
@@ -166,8 +193,13 @@ module.exports = function(com,readycb){
 
   // just expose command because you probably want to run commands from everywhere
   out.command = function(scout,command,cb){    
-    if(out.mesh && out.mesh.scoutid == scout) return out.bridgeCommand(command,cb);
-  
+    //if(out.mesh && out.mesh.scoutid == scout) {
+      //console.log('----------- short circuit bridge command!',scout,command);
+      //return out.bridgeCommand(command,cb);
+    //}
+
+    //console.log('send command!',scout,command);
+ 
     var id = ++_id;
     replyCbs[id] = cb;
     var timeout = 10000;
@@ -182,6 +214,8 @@ module.exports = function(com,readycb){
     command = {id:id,type:"command",to:scout,command:command};
     command = "hq.bridge("+JSON.stringify(JSON.stringify(command)+"\n")+");";
 
+    //console.log('commanding> ',command);
+
     out.bridgeCommand(command,function(err,data){
       if(err) {
         var cb = replyCbs[id];
@@ -193,6 +227,9 @@ module.exports = function(com,readycb){
   }
 
   out.bridgeCommand = function(command,cb){
+
+    //console.log('bridge command!',command);
+
     command = command.trim(); 
     var attempts = 0
     , z = this
@@ -222,8 +259,9 @@ module.exports = function(com,readycb){
     run();
   }
   
-  out.close = function(){
-    
+  out.close = function(fn){
+    closed = true;
+    this.scoutScript.close(fn);
   }
 
 

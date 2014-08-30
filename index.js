@@ -7,12 +7,15 @@ module.exports = function(com,options,readycb){
     readcb = options;
     options = {};
   }
-  var s = serial(com,readycb);
-  var b = bridge(options)
 
-  s.bridge = b;
+  var s = serial(com,function(err){
+    if(err) return readycb(err);
+    var b = bridge(options)
+    s.bridge = b;
 
-  s.pipe(b).pipe(s);
+    s.pipe(b).pipe(s);
+    if(readycb) readycb(false,s);
+  });
 
   return s;
 }

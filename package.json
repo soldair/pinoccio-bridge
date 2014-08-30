@@ -1,7 +1,7 @@
 {
   "name": "pinoccio-bridge",
   "description": "use a field scout with pinoccio hq over serial",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "repository": {
     "url": "git://github.com/soldair/pinoccio-bridge.git"
   },
