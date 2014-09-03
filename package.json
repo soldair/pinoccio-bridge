@@ -1,7 +1,7 @@
 {
   "name": "pinoccio-bridge",
   "description": "use a field scout with pinoccio hq over serial",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "repository": {
     "url": "git://github.com/soldair/pinoccio-bridge.git"
   },
@@ -12,7 +12,7 @@
   "author": "Ryan Day",
   "dependencies": {
     "pinoccio-server": "~0.0.2",
-    "pinoccio-serial": "~0.0.3",
+    "pinoccio-serial": "~0.0.4",
     "through": "~2.3.4",
     "split": "~0.3.0"
   },
