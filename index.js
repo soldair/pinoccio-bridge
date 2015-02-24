@@ -2,13 +2,13 @@
 var bridge = require('pinoccio-server/bridge');
 var serial = require('./serial.js');
 
-module.exports = function(com,options,readycb){
+module.exports = function(serialport,com,options,readycb){
   if(typeof options == 'function'){
     readcb = options;
     options = {};
   }
 
-  var s = serial(com,function(err){
+  var s = serial(serialport,com,function(err){
     if(err) return readycb(err);
     var b = bridge(options)
     s.bridge = b;

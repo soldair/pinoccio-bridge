@@ -1,12 +1,14 @@
 
 var through = require('through');
-var serial = require('pinoccio-serial')();
+var pserial = require('pinoccio-serial');
 var outputParser = require('./lib/verbose-parser');
 var json = require('./lib/json');
 var version = require('./package.json').version;
 
 
-module.exports = function(com,readycb){
+module.exports = function(serialport,com,readycb){
+  var serial = pserial(serialport);
+
   if(typeof options == 'function'){
     readycb = options;
     options = {};
